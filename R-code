@@ -1,8 +1,9 @@
 rm(list = ls())
-install.packages("tidyverse")
+install.packages(c("tidyverse", "irr"))
 require(ggplot2)
 require(dplyr)
 require(tidyr)
+library(irr)
 library(readxl) #for excel
 
 setwd("~/Documents/Data_Analysis/EduAI_class")
@@ -19,33 +20,26 @@ full_data <- full_data %>% dplyr::select (assignment_log_id, assignment_xid, use
 
 ###Descriptive statistics
 
-#Variable "success in subparts"
-hist(full_data$prior_subparts_avg_score_avg)
-shapiro.test (full_data$prior_subparts_avg_score_avg)
+#Full dataset
+hist(full_data$prior_subparts_avg_score_avg) #Variable "Success in subparts"
+hist(full_data$prior_knowledge_continuous) #Variable "Prior knowledge"
 
-#Variable "prior knowledge"
-hist(full_data$prior_knowledge_continuous)
-shapiro.test (full_data$prior_knowledge_continuous)
+#Creating dataset without 0 in variables
+data_without_0 <- full_data %>% 
+  filter (prior_subparts_avg_score_avg>0) %>%
+  filter (prior_knowledge_continuous>0)
 
-#Data with prior subparts
-data_without_0 <- full_data %>% filter (prior_subparts_avg_score_avg>0)
-hist(data_without_0$prior_subparts_avg_score_avg) 
+#Distribution of variables "Success in subparts" and "Prior knowledge"
+hist(data_without_0$prior_subparts_avg_score_avg) #Variable "Success in subparts"
+hist(data_without_0$prior_knowledge_continuous) #Variable "Prior knowledge"
 
-#Data with more than 1 prior subparts
-data_more_1_prior_parts <- full_data %>% filter (prior_subparts_count>1)
-hist(data_more_1_prior_parts$prior_subparts_avg_score_avg) 
+#Relationships between variables "Success in subparts questions" and "Prior knowledge"
+plot(data_without_0$prior_knowledge_continuous, data_without_0$prior_subparts_avg_score_avg)
+cor.test(data_without_0$prior_knowledge_continuous, data_without_0$prior_subparts_avg_score_avg)
 
-#Data with success in subparts more than 0.5
-data_av_score_less_05 <- full_data %>% filter (prior_subparts_avg_score_avg %in% c(0.1, 0.2, 0.3, 0.4))
-View(data_av_score_less_05)
+#Data with success lower than 0.5 in subparts questions
+data_av_score_less_05 <- data_without_0 %>% filter (prior_subparts_avg_score_avg %in% c(0.1, 0.2, 0.3, 0.4))
 sum(data_av_score_less_05$ans_body_clean2 !="")
-
-#Data with success in subparts 0
-data_av_score_0 <- full_data %>% filter (prior_subparts_avg_score_avg == 0)
-View(data_av_score_0)
-
-#Relationships between variables "Success in subparts" and "Prior knowledge"
-plot(full_data$prior_knowledge_continuous, full_data$prior_subparts_avg_score_avg)
 
 #### OUR DATASET
 dataset <- read_excel("~/Documents/Data_Analysis/EduAI_class/survey_questions_dataset_v6.1.2.xlsx")
@@ -57,7 +51,7 @@ colnames(dataset)
 names(dataset)[names(dataset) == '3rd_rater_engaged'] <- 'rater_3_engagement'
 dataset <- dataset %>% dplyr::select (assignment_log_id, assignment_xid, user_xid, 
                                       prior_subparts_count, prior_subparts_avg_score_avg, 
-                                      prior_knowledge_continuous, ans_body_clean2, ans_body_length,
+                                      prior_knowledge_continuous, ans_body_clean2, ans_body_length, ans_body_word_count,
                                       Question_in_survey, rater_1_engagement, rater_2_engagement, rater_3_engagement, rater_1_challenge, rater_2_challenge)
 
 ###Counting variable of "Engagement"
@@ -84,37 +78,30 @@ qqline(dataset$prior_knowledge_continuous, col=2)
 plot(dataset$prior_knowledge_continuous, dataset$prior_subparts_avg_score_avg)
 cor.test(dataset$prior_subparts_avg_score_avg, dataset$prior_knowledge_continuous)
 
-#subparts_avg - check normality - shapiro 
-shapiro.test (dataset$prior_subparts_avg_score)
-qqnorm(dataset$prior_subparts_avg_score, main="")
-qqline(dataset$prior_subparts_avg_score, col=2)
-
 ### Inter-rater reliability
-install.packages("lpSolve")
-library(lpSolve)
-install.packages("irr")
-library(irr)
 
 ##Calculating balance in the rating data (calculate chi square)
-table (data_with_grades$julia, data_with_grades$saoirse) #confusion matrix of graders responses
-mean(data_with_grades$julia == 0)
-mean(data_with_grades$saoirse == 0)
+table (dataset$rater_1_engagement, dataset$rater_2_engagement) #confusion matrix of graders responses
+mean(dataset$rater_1_engagement == 0)
+mean(dataset$rater_2_engagement == 0)
 
-##Calculating percent agreement (should be enough because data is rather balanced)
-mean(data_with_grades$julia == data_with_grades$saoirse)
+##Calculating percent agreement
+mean(dataset$rater_1_engagement == dataset$rater_2_engagement)
+
+##Calculating Kappa
+kappa2(dataset[,c("rater_1_engagement","rater_2_engagement")], "unweighted")
 
 #Sensitivity_for_not-engaged
-mean((data_with_grades$julia == 0) & (data_with_grades$saoirse == 0))
-data_with_rater_1_engagement_0 <- data_with_grades %>% filter(rater_1_engagement == 0)
+mean((dataset$rater_1_engagement == 0) & (dataset$rater_2_engagement == 0))
+data_with_rater_1_engagement_0 <- dataset %>% filter(rater_1_engagement == 0)
 mean(data_with_julia_0$rater_2_engagement == 0)
 
 #Sensitivity_for_engaged
-mean((data_with_grades$julia == 1) & (data_with_grades$saoirse == 1))
+mean((dataset$rater_1_engagement == 1) & (dataset$rater_2_engagement == 1))
 data_with_rater_1_engagement_1 <- dataset %>% filter(rater_1_engagement == 1)
 mean(dataset$rater_2_engagement == 1)
 
-##Calculating Cappa
-kappa2(data_with_grades[,c("julia","saoirse")], "unweighted")
+
 
 #Gwet's Agreement Coefficient 1  (REL package) https://rdrr.io/cran/rel/man/gac.html
 
@@ -179,3 +166,34 @@ coef(summary(fitMod))['subparts_score_scaled:prior_knowledge_scaled',1] #b3
 #p-value of interaction coefficient
 coef(summary(fitMod))['subparts_score_scaled:prior_knowledge_scaled',4]
 
+###Using length as a predictor
+
+##Model with answer length (symbols)
+fitRegLength1 <- glm(formula = engagement ~ ans_body_length, family = "binomial", data = dataset)
+summary(fitRegLength1)
+#McFadden's Pseudo R^2
+fitRegLength1_ll.null <- fitRegLength1$null.deviance/-2
+fitRegLength1_ll.proposed <- fitRegLength1$deviance/-2
+fitRegLength1_Rsq <- (fitRegLength1_ll.null - fitRegLength1_ll.proposed) / fitRegLength1_ll.null
+fitRegLength1_Rsq
+#p-value
+fitRegLength1_p_value <- 1 - pchisq((fitRegLength1$null.deviance - fitRegLength1$deviance), df=1)
+fitRegLength1_p_value
+
+#plot logistic regression curve
+newdata <- data.frame(ans_body_length=seq(min(dataset$ans_body_length), max(dataset$ans_body_length),len=500))
+newdata$engagement = predict(fitRegLength1, newdata, type="response")
+plot(engagement ~ ans_body_length, data=dataset, col="steelblue")
+lines(engagement ~ ans_body_length, data=newdata, lwd=2)
+
+##Model with answer length (word count)
+fitRegLength2 <- glm(formula = engagement ~ ans_body_word_count, family = "binomial", data = dataset)
+summary(fitRegLength2)
+#McFadden's Pseudo R^2
+fitRegLength2_ll.null <- fitRegLength2$null.deviance/-2
+fitRegLength2_ll.proposed <- fitRegLength2$deviance/-2
+fitRegLength2_Rsq <- (fitRegLength2_ll.null - fitRegLength2_ll.proposed) / fitRegLength2_ll.null
+fitRegLength2_Rsq
+#p-value
+fitRegLength2_p_value <- 1 - pchisq((fitRegLength2$null.deviance - fitRegLength2$deviance), df=1)
+fitRegLength2_p_value
