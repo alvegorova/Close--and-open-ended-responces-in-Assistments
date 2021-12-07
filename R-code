@@ -125,13 +125,11 @@ mean(dataset$rater_2_engagement == 1)
 #Gwet's Agreement Coefficient 1  (REL package) https://rdrr.io/cran/rel/man/gac.html
 
 ###Moderation
-#mean centering subparts_score (IV) and prior_knowkedge (M)
+##mean centering subparts_score (IV) and prior_knowkedge (M)
 dataset <- dataset %>% 
   mutate (subparts_score_scaled = scale(prior_subparts_avg_score_avg, center=TRUE, scale=FALSE))
 dataset <- dataset %>% 
   mutate (prior_knowledge_scaled = scale(prior_knowledge_continuous, center=TRUE, scale=FALSE))
-
-###Modeling
 
 ##Model with one predictor (IV)
 fitReg <- glm(formula = engagement ~ subparts_score_scaled, family = "binomial", data = dataset)
@@ -224,7 +222,7 @@ fitRegLength2_Rsq
 fitRegLength2_p_value <- 1 - pchisq((fitRegLength2$null.deviance - fitRegLength2$deviance), df=1)
 fitRegLength2_p_value
 
-###Model with length + subparts success as predictors
+### Model with length + subparts success as predictors
 fitRegSubLength <- glm(formula = engagement ~ subparts_score_scaled +ans_body_length, family = "binomial", data = dataset)
 summary(fitRegSubLength)
 #McFadden's Pseudo R^2
