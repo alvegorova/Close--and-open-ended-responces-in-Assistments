@@ -63,13 +63,34 @@ str(dataset)
 ###Descriptive stats
 
 #Variable "Success in subparts"
-hist (dataset$prior_subparts_avg_score_avg)
+hist (dataset$prior_subparts_avg_score_avg, xlab="Success in subparts", caption = "something")
+dataset %>%
+  ggplot(aes(prior_subparts_avg_score_avg)) +
+  geom_histogram(aes(fill = prior_subparts_avg_score_avg)) +
+  labs(
+    caption = "Distribution of Success in Subparts (percentage)",
+    alt = "Distribution of Success in Subparts",
+    x = "Success in subparts questions (percentage)", y = "Count"
+  )+
+  theme_grey(base_size = 18)
+
 shapiro.test (dataset$prior_subparts_avg_score_avg) #check normality
 qqnorm(dataset$prior_subparts_avg_score_avg, main="")
 qqline(dataset$prior_subparts_avg_score_avg, col=2)
 
 #Variable "Prior knowledge"
 hist (dataset$prior_knowledge_continuous)
+dataset %>%
+  ggplot(aes(prior_knowledge_continuous)) +
+  geom_histogram(aes(fill = prior_knowledge_continuous)) +
+  labs(
+    caption = "Distribution of prior knowledge (percentage)",
+    alt = "Distribution of prior knowledge",
+    x = "Prior knowledge (percentage)", y = "Count"
+  )+
+  theme_grey(base_size = 18)
+
+
 shapiro.test (dataset$prior_knowledge_continuous) #check normality
 qqnorm(dataset$prior_knowledge_continuous, main="")
 qqline(dataset$prior_knowledge_continuous, col=2)
